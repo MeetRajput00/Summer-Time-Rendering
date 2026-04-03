@@ -2,6 +2,9 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import session from 'express-session';
+import passport from './auth/passport.js';
+import * as authController from './auth/auth.controller.js';
 import { PlayerState, NpcState, ClientToServerEvents, ServerToClientEvents } from '@summer/shared';
 
 export const app = express();
@@ -9,6 +12,24 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use(session({
+  secret: process.env.JWT_SECRET || 'summer_time_rendering_jwt_secret',
+  resave: false,
+  saveUninitialized: false,
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Auth Routes
+app.post('/api/auth/register', authController.register);
+app.post('/api/auth/login', passport.authenticate('local'), authController.login);
+
+// OAuth Routes
+app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+app.get('/api/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), authController.oauthCallback);
+
+app.get('/api/auth/github', passport.authenticate('github', { scope: ['user:email'] }));
+app.get('/api/auth/github/callback', passport.authenticate('github', { failureRedirect: '/login' }), authController.oauthCallback);
 
 export const httpServer = createServer(app);
 export const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
