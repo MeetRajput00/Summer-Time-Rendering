@@ -4,14 +4,14 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { PlayerState, NpcState, ClientToServerEvents, ServerToClientEvents } from '@summer/shared';
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 
-const httpServer = createServer(app);
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
+export const httpServer = createServer(app);
+export const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: {
     origin: "*", // allow all in dev
     methods: ["GET", "POST"]
@@ -145,6 +145,8 @@ app.post('/api/save', (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  httpServer.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
