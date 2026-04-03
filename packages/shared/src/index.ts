@@ -1,3 +1,4 @@
+export * from './auth';
 export interface PlayerState {
   id: string;
   x: number;

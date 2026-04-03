@@ -115,6 +115,11 @@ dist/
 .eslintcache
 .stylelintcache
 
+# SQLite / Prisma
+*.db
+*.db-journal
+/packages/server/prisma/migrations/*.db
+
 # Server-specific ignores
 uploads/
 temp/

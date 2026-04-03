@@ -1,7 +1,28 @@
 import React, { useState, useEffect } from 'react';
+import { User } from '@summer/shared';
+import { LoginScreen } from './components/LoginScreen';
 
 export const App: React.FC = () => {
   const [dialogue, setDialogue] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+
+  const handleLoginSuccess = (user: User, token: string) => {
+    setUser(user);
+    setToken(token);
+    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('token', token);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+  };
 
   useEffect(() => {
     // Listen for custom events from Phaser to update React UI
@@ -17,8 +38,32 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  if (!user || !token) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div style={{ width: '100%', height: '100%', pointerEvents: 'none' }}>
+      {/* Logout Button */}
+      <button 
+        onClick={handleLogout}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          padding: '8px 16px',
+          background: 'rgba(0, 0, 0, 0.6)',
+          color: 'white',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          pointerEvents: 'auto',
+          fontSize: '12px'
+        }}
+      >
+        LOGOUT
+      </button>
+
       {dialogue && (
         <div 
           onClick={() => setDialogue(null)}
