@@ -61,6 +61,7 @@ build/Release
 # Dependency directories (again, common variants)
 node_modules/
 jspm_packages/
+tmp/
 
 # TypeScript cache
 *.tsbuildinfo
