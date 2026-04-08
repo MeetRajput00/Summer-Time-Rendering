@@ -1,9 +1,24 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { App } from './App';
 
+vi.mock('./game/PhaserGame', () => ({
+  initGame: vi.fn(() => ({
+    destroy: vi.fn()
+  }))
+}));
+
 describe('App Component', () => {
+  beforeEach(() => {
+    localStorage.setItem('user', JSON.stringify({ id: '1', username: 'testuser' }));
+    localStorage.setItem('token', 'fake-token');
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   it('should render a dialogue when a custom event is triggered', async () => {
     render(<App />);
     

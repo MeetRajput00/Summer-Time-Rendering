@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '@summer/shared';
 import { LoginScreen } from './components/LoginScreen';
+import { initGame } from './game/PhaserGame';
 
 export const App: React.FC = () => {
   const [dialogue, setDialogue] = useState<string | null>(null);
@@ -37,6 +38,18 @@ export const App: React.FC = () => {
       window.removeEventListener('show-dialogue', handleDialogueEvent);
     };
   }, []);
+
+  useEffect(() => {
+    let game: Phaser.Game | null = null;
+    if (user && token) {
+      game = initGame('game-container');
+    }
+    return () => {
+      if (game) {
+        game.destroy(true);
+      }
+    };
+  }, [user, token]);
 
   if (!user || !token) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
