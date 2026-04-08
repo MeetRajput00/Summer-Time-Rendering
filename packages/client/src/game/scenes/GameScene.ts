@@ -1,13 +1,11 @@
 import { Scene } from 'phaser';
-import { io, Socket } from 'socket.io-client';
-import { PlayerState, NpcState, ClientToServerEvents, ServerToClientEvents } from '@summer/shared';
+import { NpcState } from '@summer/shared';
 
 export class GameScene extends Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private socket!: Socket<ServerToClientEvents, ClientToServerEvents>;
-  private otherPlayers: Record<string, Phaser.Physics.Arcade.Sprite> = {};
   private npcs: Record<string, Phaser.Physics.Arcade.Sprite> = {};
+  private npcWanderState: Record<string, { dx: number, dy: number, timer: number }> = {};
   private currentLoopId: number = 0;
 
   constructor() {
@@ -21,9 +19,6 @@ export class GameScene extends Scene {
   private playerDirStr: string = 'down';
 
   create() {
-    // Connect to server
-    this.socket = io('http://localhost:3001');
-
     // Create environment backing using frame 0 of plains.png
     this.add.tileSprite(0, 0, 2000, 2000, 'plains', 0).setOrigin(0, 0);
 
@@ -73,78 +68,29 @@ export class GameScene extends Scene {
       this.dispatchDialogue(`Loop ${this.currentLoopId}. I'm back again. The starting point is the same, but for how long?`);
     }
 
-    // Socket Listeners
-    this.socket.on('currentPlayers', (players) => {
-      Object.keys(players).forEach((id) => {
-        if (id !== this.socket.id) {
-          this.addOtherPlayer(players[id]);
-        }
-      });
-    });
-
-    this.socket.on('newPlayer', (playerInfo) => {
-      this.addOtherPlayer(playerInfo);
-    });
-
-    this.socket.on('playerDisconnect', (id) => {
-      if (this.otherPlayers[id]) {
-        this.otherPlayers[id].destroy();
-        delete this.otherPlayers[id];
-      }
-    });
-
-    this.socket.on('playerMoved', (playerInfo) => {
-      if (this.otherPlayers[playerInfo.id]) {
-        const otherSprite = this.otherPlayers[playerInfo.id];
-        otherSprite.setPosition(playerInfo.x, playerInfo.y);
-        otherSprite.setFlipX(playerInfo.flipX);
-        otherSprite.play(playerInfo.anim, true);
-      }
-    });
-
-    this.socket.on('currentNpcs', (receivedNpcs) => {
-      Object.keys(receivedNpcs).forEach((id) => {
-        this.addNpc(receivedNpcs[id]);
-      });
-    });
-
-    this.socket.on('npcMoved', (npcInfo) => {
-      if (this.npcs[npcInfo.id]) {
-        const npcSprite = this.npcs[npcInfo.id];
-        npcSprite.setPosition(npcInfo.x, npcInfo.y);
-        npcSprite.setFlipX(npcInfo.flipX);
-        npcSprite.play(npcInfo.anim, true);
-      } else {
-        this.addNpc(npcInfo);
-      }
-    });
+    // Initialize NPCs locally
+    for (let i = 0; i < 5; i++) {
+      const id = `npc_slime_${i}`;
+      this.npcWanderState[id] = { dx: 0, dy: 0, timer: 0 };
+      
+      const x = 400 + Math.random() * 400 - 200;
+      const y = 300 + Math.random() * 400 - 200;
+      const npcSprite = this.physics.add.sprite(x, y, 'slime');
+      npcSprite.play('slime-idle-down');
+      this.npcs[id] = npcSprite;
+    }
   }
 
-  private addOtherPlayer(playerInfo: PlayerState) {
-    const otherSprite = this.physics.add.sprite(playerInfo.x, playerInfo.y, 'player');
-    otherSprite.setFlipX(playerInfo.flipX);
-    otherSprite.play(playerInfo.anim);
-    this.otherPlayers[playerInfo.id] = otherSprite;
-  }
-
-  private addNpc(npcInfo: NpcState) {
-    const npcSprite = this.physics.add.sprite(npcInfo.x, npcInfo.y, npcInfo.npcType);
-    npcSprite.setFlipX(npcInfo.flipX);
-    npcSprite.play(npcInfo.anim);
-    this.npcs[npcInfo.id] = npcSprite;
-  }
-
-  update() {
+  update(time: number, delta: number) {
     if (!this.cursors) return;
 
+    this.updatePlayerMovement();
+    this.updateNpcMovement(delta);
+  }
+
+  private updatePlayerMovement() {
     const speed = 200;
     this.player.setVelocity(0);
-
-    // Store old values for changed detection
-    const oldX = this.player.x;
-    const oldY = this.player.y;
-    const oldFlipX = this.player.flipX;
-    const oldAnim = this.player.anims.currentAnim?.key;
 
     if (this.cursors.left.isDown) {
       this.player.setVelocityX(-speed);
@@ -171,20 +117,60 @@ export class GameScene extends Scene {
     const isMoving = body.velocity.lengthSq() > 0;
     const currentAnim = isMoving ? `player-move-${this.playerDirStr}` : `player-idle-${this.playerDirStr}`;
     this.player.anims.play(currentAnim, true);
+  }
 
-    if (
-      this.player.x !== oldX ||
-      this.player.y !== oldY ||
-      this.player.flipX !== oldFlipX ||
-      currentAnim !== oldAnim
-    ) {
-      this.socket.emit('playerMovement', {
-        x: this.player.x,
-        y: this.player.y,
-        flipX: this.player.flipX,
-        anim: currentAnim
-      });
-    }
+  private updateNpcMovement(delta: number) {
+    Object.keys(this.npcs).forEach(id => {
+      const npc = this.npcs[id];
+      const state = this.npcWanderState[id];
+      state.timer -= delta;
+
+      if (state.timer <= 0) {
+        const rand = Math.random();
+        
+        let dirStr = 'down';
+        if (Math.abs(state.dx) > Math.abs(state.dy)) {
+          dirStr = 'right';
+        } else if (state.dy < 0) {
+          dirStr = 'up';
+        } else {
+          dirStr = 'down';
+        }
+
+        if (rand < 0.5) {
+          state.dx = 0;
+          state.dy = 0;
+          npc.play(`slime-idle-${dirStr}`, true);
+        } else {
+          const angle = Math.random() * Math.PI * 2;
+          state.dx = Math.cos(angle);
+          state.dy = Math.sin(angle);
+          
+          let moveDirStr = 'down';
+          if (Math.abs(state.dx) > Math.abs(state.dy)) {
+            moveDirStr = 'right';
+          } else if (state.dy < 0) {
+            moveDirStr = 'up';
+          }
+
+          npc.play(`slime-move-${moveDirStr}`, true);
+          npc.setFlipX(state.dx < 0);
+        }
+        state.timer = 1000 + Math.random() * 2000;
+      }
+
+      if (state.dx !== 0 || state.dy !== 0) {
+        const speed = 100;
+        let nx = npc.x + state.dx * speed * (delta / 1000);
+        let ny = npc.y + state.dy * speed * (delta / 1000);
+        
+        // Clamp to grass area avoiding water boundaries (32 to 1968)
+        nx = Math.max(32, Math.min(1968, nx));
+        ny = Math.max(32, Math.min(1968, ny));
+        
+        npc.setPosition(nx, ny);
+      }
+    });
   }
 
   private dispatchDialogue(text: string) {
@@ -201,7 +187,15 @@ export class GameScene extends Scene {
 
     // Wait for effects then restart
     this.time.delayedCall(1000, () => {
-      this.socket.emit('playerLoopUpdate', { loopId: this.currentLoopId + 1 });
+      // API call to save loop state
+      fetch('http://localhost:3001/api/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ loopId: this.currentLoopId + 1, position: { x: 400, y: 300 } })
+      }).catch(err => console.error("Could not save game state", err));
+      
       this.scene.restart({ loopId: this.currentLoopId + 1 });
     });
   }

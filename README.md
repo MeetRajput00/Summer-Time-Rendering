@@ -1,13 +1,13 @@
-# Summer Time Rendering: The MMORPG
+# Summer Time Rendering: The RPG
 
-A 2D sprite-based, browser-based MMORPG inspired by the anime/manga *Summer Time Rendering*. Built with modern web technologies, this project focuses on a synchronized multiplayer experience with mystery, time-loop mechanics, and narrative depth.
+A 2D sprite-based, browser-based single-player RPG inspired by the anime/manga *Summer Time Rendering*. Built with modern web technologies, this project focuses on a single-player RPG experience with mystery, time-loop mechanics, and narrative depth.
 
 ## 🌟 Vision
-To create a production-grade interactive world where players can explore the mystery of Hitogashima island, interact with NPCs, and face the "Shadows" in a fully synchronized multiplayer environment.
+To create a production-grade interactive world where players can explore the mystery of Hitogashima island, interact with NPCs, and face the "Shadows" in a fully single-player environment.
 
 ## 🛠 Tech Stack
 - **Frontend**: [Phaser 3](https://phaser.io/) (Game Engine), [React](https://reactjs.org/) (UI/HUD), [Vite](https://vitejs.dev/) (Build tool)
-- **Backend**: [Node.js](https://nodejs.org/), [Express](https://expressjs.com/), [Socket.io](https://socket.io/) (Real-time networking), [tsx](https://github.com/privatenumber/tsx) (Modern runner)
+- **Backend**: [Node.js](https://nodejs.org/), [Express](https://expressjs.com/), [tsx](https://github.com/privatenumber/tsx) (Modern runner) for save states
 - **Shared**: [TypeScript](https://www.typescriptlang.org/) (Strongly typed patterns across client and server)
 - **Monorepo Management**: npm Workspaces
 
@@ -18,7 +18,7 @@ The project uses a monorepo structure to share types and logic between the clien
 .
 ├── packages/
 │   ├── client/     # Phaser + React frontend
-│   ├── server/     # Node.js + Socket.io authoritative server
+│   ├── server/     # Node.js REST API for persistence
 │   └── shared/     # Shared types and game logic
 ├── docs/           # Project documentation and roadmaps
 └── assets/         # Raw assets and sprite sources
@@ -57,12 +57,10 @@ If you modify `packages/shared`, ensure it is built so the client and server can
 npm run build -w @summer/shared
 ```
 
-### Server Authoritative Logic
-The server is authoritative for:
-- Player positions and movement validation.
-- NPC (Slime) AI movement.
-- Combat calculations (hitboxes, damage).
-- Global state synchronization.
+### REST API Backend
+The server provides endpoints for:
+- Saving and loading loop states.
+- Persisting high-level progression.
 
 ### Client-Side Rendering
 The client is responsible for:
