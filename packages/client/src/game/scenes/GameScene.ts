@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { NpcState } from '@summer/shared';
+import { NpcState, GamePhase } from '@summer/shared';
 
 export class GameScene extends Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -7,6 +7,8 @@ export class GameScene extends Scene {
   private npcs: Record<string, Phaser.Physics.Arcade.Sprite> = {};
   private npcWanderState: Record<string, { dx: number, dy: number, timer: number }> = {};
   private currentLoopId: number = 0;
+  private currentPhase: GamePhase = GamePhase.PROLOGUE;
+  private lightingOverlay!: Phaser.GameObjects.Rectangle;
 
   constructor() {
     super('GameScene');
@@ -43,6 +45,20 @@ export class GameScene extends Scene {
     
     // Apply environmental boundary collisions
     this.physics.add.collider(this.player, boundaries);
+
+    // Setup Lighting Overlay for Phase change
+    this.lightingOverlay = this.add.rectangle(0, 0, 2000, 2000, 0xff8800).setOrigin(0, 0).setAlpha(0).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    this.lightingOverlay.setDepth(100);
+
+    // Fetch initial Phase from server
+    fetch('http://localhost:3001/api/phase')
+      .then(res => res.json())
+      .then(data => {
+        if (data.phase) {
+          this.updatePhase(data.phase);
+        }
+      })
+      .catch(err => console.error("Could not fetch phase", err));
     
     // Play idle animation by default
     this.player.play('player-idle-down');
@@ -59,6 +75,16 @@ export class GameScene extends Scene {
       // Setup Loop Reset debug key (R)
       this.input.keyboard.on('keydown-R', () => {
         this.triggerLoopReset();
+      });
+
+      // Simulation specific key (F = Festival)
+      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F).on('down', () => {
+        this.updatePhaseOnServer(GamePhase.SUMMER_FESTIVAL);
+      });
+
+      // Simulation specific key (K = Kill / Death)
+      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K).on('down', () => {
+        this.triggerDeathSequence();
       });
     }
 
@@ -178,6 +204,42 @@ export class GameScene extends Scene {
     window.dispatchEvent(event);
   }
 
+  private updatePhaseOnServer(phase: GamePhase) {
+    fetch('http://localhost:3001/api/phase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phase })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        this.updatePhase(data.phase);
+      }
+    })
+    .catch(err => console.error("Could not update phase", err));
+  }
+
+  private updatePhase(phase: GamePhase) {
+    this.currentPhase = phase;
+    if (phase === GamePhase.SUMMER_FESTIVAL) {
+        this.dispatchDialogue("The Summer Festival has begun... The sky turns vibrant orange.");
+        this.tweens.add({
+            targets: this.lightingOverlay,
+            alpha: 0.5,
+            duration: 2500,
+            ease: 'Power2'
+        });
+    } else if (phase === GamePhase.PROLOGUE) {
+        this.lightingOverlay.setAlpha(0);
+    }
+  }
+
+  private triggerDeathSequence() {
+    this.updatePhaseOnServer(GamePhase.LOOP_RESET);
+    window.dispatchEvent(new CustomEvent('loop-reset'));
+    this.triggerLoopReset();
+  }
+
   private triggerLoopReset() {
     // Visual effects for the loop reset
     this.cameras.main.shake(500, 0.02);
@@ -187,6 +249,9 @@ export class GameScene extends Scene {
 
     // Wait for effects then restart
     this.time.delayedCall(1000, () => {
+      // Reset Phase internally and on server
+      this.updatePhaseOnServer(GamePhase.PROLOGUE);
+
       // API call to save loop state
       fetch('http://localhost:3001/api/save', {
         method: 'POST',
