@@ -3,6 +3,7 @@ import cors from 'cors';
 import session from 'express-session';
 import passport from './auth/passport.js';
 import * as authController from './auth/auth.controller.js';
+import { getPhase, setPhase } from './gameLoop/phases.js';
 
 export const app = express();
 const PORT = process.env.PORT || 3001;
@@ -37,6 +38,20 @@ app.post('/api/save', (req: Request, res: Response) => {
   const { loopId, position } = req.body;
   console.log(`Saved game state for loop ${loopId}`);
   res.json({ success: true });
+});
+
+app.get('/api/phase', (req: Request, res: Response) => {
+  res.json({ phase: getPhase() });
+});
+
+app.post('/api/phase', (req: Request, res: Response) => {
+  const { phase } = req.body;
+  if (phase) {
+    setPhase(phase);
+    res.json({ success: true, phase: getPhase() });
+  } else {
+    res.status(400).json({ error: 'phase is required' });
+  }
 });
 
 if (process.env.NODE_ENV !== 'test') {

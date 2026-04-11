@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
 import { LoginScreen } from './components/LoginScreen';
+import { ResetOverlay } from './components/ResetOverlay';
 import { initGame } from './game/PhaserGame';
 export const App = () => {
     const [dialogue, setDialogue] = useState(null);
@@ -46,7 +47,7 @@ export const App = () => {
     if (!user || !token) {
         return _jsx(LoginScreen, { onLoginSuccess: handleLoginSuccess });
     }
-    return (_jsxs("div", { style: { width: '100%', height: '100%', pointerEvents: 'none' }, children: [_jsx("button", { onClick: handleLogout, style: {
+    return (_jsxs("div", { style: { width: '100%', height: '100%', pointerEvents: 'none' }, children: [_jsx(ResetOverlay, {}), _jsx("button", { onClick: handleLogout, style: {
                     position: 'absolute',
                     top: '20px',
                     right: '20px',

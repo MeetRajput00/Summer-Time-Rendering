@@ -2,6 +2,7 @@
   "name": "@summer/shared",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc",

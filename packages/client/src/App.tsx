@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '@summer/shared';
 import { LoginScreen } from './components/LoginScreen';
+import { ResetOverlay } from './components/ResetOverlay';
 import { initGame } from './game/PhaserGame';
 
 export const App: React.FC = () => {
@@ -57,6 +58,7 @@ export const App: React.FC = () => {
 
   return (
     <div style={{ width: '100%', height: '100%', pointerEvents: 'none' }}>
+      <ResetOverlay />
       {/* Logout Button */}
       <button 
         onClick={handleLogout}
